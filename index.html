@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Крипто Портфель</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+  :root { --bg-main: #0a0a0f; --bg-card: #15151e; --bg-table: #0f0f16; --bg-input: #1a1a25; --accent-lime: #c8fc3f; --accent-purple: #985bff; --text-white: #ffffff; --text-muted: #6b6b7b; --profit: #00d084; --loss: #ff4757; --border: #252535; --border-hover: #3a3a4a; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg-main); color: var(--text-white); padding: 20px; min-height: 100vh; }
+  .container { max-width: 1400px; margin: 0 auto; }
+  .header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; padding: 16px 24px; background: var(--bg-card); border-radius: 16px; border: 1px solid var(--border); }
+  .header-left { display: flex; align-items: center; gap: 14px; }
+  .header-icon { width: 42px; height: 42px; background: linear-gradient(135deg, var(--accent-lime), #a8d820); border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: 800; color: var(--bg-main); box-shadow: 0 4px 14px rgba(200, 252, 63, 0.3); }
+  .header h1 { font-size: 22px; font-weight: 700; }
+  .header-right { display: flex; align-items: center; gap: 16px; }
+  .currency-switcher { display: flex; gap: 4px; background: var(--bg-input); padding: 4px; border-radius: 8px; }
+  .currency-btn { background: transparent; border: none; color: var(--text-muted); padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 600; transition: all 0.2s; }
+  .currency-btn.active { background: var(--accent-purple); color: white; }
+  .sync-status { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text-muted); }
+  .sync-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--text-muted); transition: all 0.3s; }
+  .sync-dot.active { background: var(--accent-lime); box-shadow: 0 0 10px var(--accent-lime); }
+  .sync-dot.success { background: var(--profit); }
+  .rate-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
+  .rate-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px; padding: 18px; transition: all 0.3s; }
+  .rate-card:hover { border-color: var(--accent-purple); transform: translateY(-2px); box-shadow: 0 8px 24px rgba(152, 91, 255, 0.15); }
+  .rate-card label { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; color: var(--text-muted); font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; }
+  .rate-card label svg { width: 16px; height: 16px; }
+  .rate-card input { background: var(--bg-input); border: 1px solid var(--border); color: var(--accent-lime); padding: 12px 16px; border-radius: 10px; font-size: 24px; font-weight: 700; width: 100%; cursor: not-allowed; }
+  .summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; margin-bottom: 20px; }
+  .card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px; padding: 18px; transition: all 0.3s; display: flex; flex-direction: column; min-height: 130px; }
+  .card:hover { border-color: var(--border-hover); transform: translateY(-2px); }
+  .card-label { display: flex; align-items: center; gap: 6px; color: var(--text-muted); font-size: 11px; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.8px; font-weight: 600; }
+  .card-label svg { width: 14px; height: 14px; }
+  .card-value { font-size: 26px; font-weight: 700; color: var(--text-white); display: flex; align-items: center; gap: 8px; flex-wrap: wrap; min-height: 36px; }
+  .card-value .indicator { font-size: 18px; font-weight: 700; }
+  .card-value .indicator.positive { color: var(--profit); }
+  .card-value .indicator.negative { color: var(--loss); }
+  .card-sub { font-size: 13px; color: var(--text-muted); margin-top: 4px; min-height: 18px; }
+  .card-progress { margin-top: auto; padding-top: 10px; width: 100%; }
+  .progress-bar { width: 100%; height: 6px; background: var(--bg-input); border-radius: 3px; overflow: hidden; }
+  .progress-fill { height: 100%; border-radius: 3px; transition: width 0.6s ease; }
+  .progress-fill.profit { background: linear-gradient(90deg, var(--profit), #00ff88); }
+  .progress-fill.loss { background: linear-gradient(90deg, var(--loss), #ff6b7a); }
+  .charts-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin-bottom: 20px; }
+  @media (max-width: 900px) { .charts-grid { grid-template-columns: 1fr; } }
+  .chart-container { background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px; padding: 18px; height: 320px; display: flex; flex-direction: column; }
+  .chart-title { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600; margin-bottom: 14px; color: var(--text-white); }
+  .chart-title svg { width: 16px; height: 16px; }
+  .chart-body { flex: 1; position: relative; min-height: 0; }
+  .period-switcher { display: flex; gap: 4px; margin-left: auto; background: var(--bg-input); padding: 3px; border-radius: 6px; }
+  .period-btn { background: transparent; border: none; color: var(--text-muted); padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 11px; font-weight: 600; transition: all 0.2s; }
+  .period-btn.active { background: var(--accent-purple); color: white; }
+  .prediction-box { background: var(--bg-card); border: 1px solid var(--border); border-radius: 14px; padding: 18px; margin-bottom: 20px; }
+  .prediction-header { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600; margin-bottom: 14px; }
+  .prediction-header svg { width: 16px; height: 16px; }
+  .prediction-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; }
+  .prediction-item { background: var(--bg-input); padding: 14px; border-radius: 10px; }
+  .prediction-label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; margin-bottom: 6px; }
+  .prediction-value { font-size: 18px; font-weight: 700; }
+  .prediction-value.up { color: var(--profit); }
+  .prediction-value.down { color: var(--loss); }
+  .toolbar { display: flex; gap: 10px; margin-bottom: 20px; align-items: center; flex-wrap: wrap; }
+  .btn { background: var(--bg-card); border: 1px solid var(--border); color: var(--text-white); padding: 10px 16px; border-radius: 10px; cursor: pointer; font-size: 13px; font-weight: 600; transition: all 0.2s; display: inline-flex; align-items: center; gap: 6px; }
+  .btn:hover { background: var(--border); border-color: var(--border-hover); transform: translateY(-1px); }
+  .btn-primary { background: var(--accent-lime); border-color: var(--accent-lime); color: var(--bg-main); font-weight: 700; font-size: 14px; padding: 10px 20px; }
+  .btn-primary:hover { background: #d5ff55; box-shadow: 0 4px 12px rgba(200, 252, 63, 0.3); }
+  .btn-menu { margin-left: auto; }
+  .dropdown { position: relative; display: inline-block; }
+  .dropdown-content { display: none; position: absolute; right: 0; top: 100%; background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px; min-width: 200px; z-index: 1000; margin-top: 8px; box-shadow: 0 8px 24px rgba(0,0,0,0.4); }
+  .dropdown-content.show { display: block; animation: slideDown 0.2s; }
+  @keyframes slideDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+  .dropdown-item { padding: 12px 16px; cursor: pointer; transition: all 0.2s; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; font-size: 13px; }
+  .dropdown-item:last-child { border-bottom: none; }
+  .dropdown-item:hover { background: var(--bg-input); }
+  .dropdown-item.danger { color: var(--loss); }
+  .dropdown-item svg { width: 16px; height: 16px; }
+  .filters { display: flex; gap: 8px; margin-bottom: 16px; }
+  .filter-btn { background: var(--bg-input); border: 1px solid var(--border); color: var(--text-muted); padding: 8px 16px; border-radius: 8px; cursor: pointer; font-size: 13px; font-weight: 600; transition: all 0.2s; }
+  .filter-btn.active { background: var(--accent-purple); border-color: var(--accent-purple); color: white; }
+  .filter-btn:hover:not(.active) { border-color: var(--border-hover); color: var(--text-white); }
+  .table-wrap { background: var(--bg-table); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; }
+  table { width: 100%; border-collapse: collapse; }
+  th { background: var(--bg-card); padding: 14px 12px; text-align: center; font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.8px; font-weight: 700; border-bottom: 2px solid var(--border); cursor: pointer; user-select: none; }
+  th:hover { color: var(--text-white); }
+  th.sortable::after { content: ' ↕'; opacity: 0.5; }
+  th.sort-asc::after { content: ' ↑'; opacity: 1; color: var(--accent-lime); }
+  th.sort-desc::after { content: ' ↓'; opacity: 1; color: var(--accent-lime); }
+  td { padding: 14px 12px; border-bottom: 1px solid var(--border); font-size: 14px; color: var(--text-white); text-align: center; background: var(--bg-table); }
+  tr { transition: all 0.3s; }
+  tr:hover td { background: var(--bg-card); }
+  tr.profit-row { border-left: 3px solid var(--profit); }
+  tr.loss-row { border-left: 3px solid var(--loss); }
+  tr.fade-in { animation: fadeIn 0.4s; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }
+  input, select { background: var(--bg-input); border: 1px solid var(--border); color: var(--text-white); padding: 8px 12px; border-radius: 8px; width: 100%; font-size: 13px; }
+  input:focus, select:focus { outline: none; border-color: var(--accent-lime); box-shadow: 0 0 0 3px rgba(200, 252, 63, 0.1); }
+  input:read-only { background: var(--bg-card); color: var(--text-muted); cursor: not-allowed; }
+  .btn-small { padding: 6px 12px; font-size: 12px; border-radius: 6px; }
+  .btn-delete { background: rgba(255, 71, 87, 0.15); border-color: var(--loss); color: var(--loss); }
+  .btn-delete:hover { background: rgba(255, 71, 87, 0.25); }
+  .modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); z-index: 2000; align-items: center; justify-content: center; backdrop-filter: blur(4px); }
+  .modal-overlay.active { display: flex; animation: fadeIn 0.3s; }
+  .modal { background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 28px; width: 90%; max-width: 500px; box-shadow: 0 20px 60px rgba(0,0,0,0.5); max-height: 90vh; overflow-y: auto; }
+  .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
+  .modal-title { font-size: 20px; font-weight: 700; }
+  .modal-close { background: none; border: none; color: var(--text-muted); font-size: 24px; cursor: pointer; padding: 0; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: 8px; }
+  .modal-close:hover { background: var(--bg-input); color: var(--text-white); }
+  .form-group { margin-bottom: 18px; }
+  .form-group label { display: block; margin-bottom: 8px; color: var(--text-muted); font-size: 12px; font-weight: 600; text-transform: uppercase; }
+  .form-group input, .form-group select { padding: 12px 16px; font-size: 15px; }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .btn-submit { width: 100%; padding: 14px; font-size: 15px; margin-top: 10px; }
+  .what-if-result { background: var(--bg-input); padding: 16px; border-radius: 10px; margin-top: 16px; }
+  .what-if-row { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 14px; }
+  .what-if-row:last-child { margin-bottom: 0; padding-top: 8px; border-top: 1px solid var(--border); font-weight: 700; font-size: 16px; }
+  .empty-state { text-align: center; padding: 60px 20px; color: var(--text-muted); }
+  .empty-state-icon { margin-bottom: 16px; }
+  .empty-state-icon svg { width: 64px; height: 64px; opacity: 0.5; }
+  .empty-state h3 { font-size: 20px; margin-bottom: 8px; color: var(--text-white); }
+  .undo-toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(100px); background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 14px 24px; display: flex; align-items: center; gap: 14px; box-shadow: 0 8px 24px rgba(0,0,0,0.4); z-index: 3000; opacity: 0; transition: all 0.3s; }
+  .undo-toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+  .undo-btn { background: var(--accent-lime); border: none; color: var(--bg-main); padding: 6px 16px; border-radius: 6px; font-weight: 700; cursor: pointer; font-size: 13px; }
+  .loading-state { text-align: center; padding: 60px 20px; color: var(--accent-lime); font-weight: 600; }
+  .coin-badge { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 6px; font-weight: 600; font-size: 12px; }
+  .coin-badge.btc { background: rgba(200, 252, 63, 0.15); color: var(--accent-lime); border: 1px solid var(--accent-lime); }
+  .coin-badge.eth { background: rgba(152, 91, 255, 0.15); color: var(--accent-purple); border: 1px solid var(--accent-purple); }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <div class="header-left"><div class="header-icon">₿</div><h1>Крипто Портфель</h1></div>
+    <div class="header-right">
+      <div class="currency-switcher">
+        <button class="currency-btn active" onclick="setCurrency('RUB')">₽</button>
+        <button class="currency-btn" onclick="setCurrency('USD')">$</button>
+        <button class="currency-btn" onclick="setCurrency('EUR')">€</button>
+      </div>
+      <div class="sync-status"><div class="sync-dot" id="syncDot"></div><span id="syncText">Синхронизация...</span></div>
+    </div>
+  </div>
+  <div class="rate-cards">
+    <div class="rate-card"><label><svg viewBox="0 0 24 24" fill="var(--accent-lime)"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/></svg>Текущий курс BTC</label><input type="text" id="btcRate" readonly></div>
+    <div class="rate-card"><label><svg viewBox="0 0 24 24" fill="var(--accent-purple)"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>Текущий курс ETH</label><input type="text" id="ethRate" readonly></div>
+  </div>
+  <div class="summary" id="summary"></div>
+  <div class="charts-grid">
+    <div class="chart-container"><div class="chart-title"><svg viewBox="0 0 24 24" fill="var(--text-muted)"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/></svg>Распределение портфеля</div><div class="chart-body"><canvas id="pieChart"></canvas></div></div>
+    <div class="chart-container"><div class="chart-title"><svg viewBox="0 0 24 24" fill="var(--text-muted)"><path d="M3 3v18h18v-2H5V3H3zm4 14h2v-4H7v4zm4 0h2V7h-2v10zm4 0h2v-7h-2v7z"/></svg>Вложено vs Стоимость</div><div class="chart-body"><canvas id="barChart"></canvas></div></div>
+    <div class="chart-container"><div class="chart-title"><svg viewBox="0 0 24 24" fill="var(--text-muted)"><path d="M3.5 18.49l6-6.01 4 4L22 6.92l-1.41-1.41-7.09 7.97-4-4L2 16.99z"/></svg>Динамика портфеля</div><div class="chart-body"><canvas id="lineChart"></canvas></div></div>
+    <div class="chart-container"><div class="chart-title"><svg viewBox="0 0 24 24" fill="var(--text-muted)"><path d="M13 3c-4.97 0-9 4.03-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42C8.27 19.99 10.51 21 13 21c4.97 0 9-4.03 9-9s-4.03-9-9-9zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z"/></svg>История курсов<div class="period-switcher"><button class="period-btn" onclick="setPeriod(1)">Сутки</button><button class="period-btn" onclick="setPeriod(7)">Неделя</button><button class="period-btn active" onclick="setPeriod(30)">Месяц</button><button class="period-btn" onclick="setPeriod(365)">Год</button><button class="period-btn" onclick="setPeriod('max')">Всё</button></div></div><div class="chart-body"><canvas id="historyChart"></canvas></div></div>
+  </div>
+  <div class="prediction-box"><div class="prediction-header"><svg viewBox="0 0 24 24" fill="var(--accent-lime)"><path d="M13 3c-4.97 0-9 4.03-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42C8.27 19.99 10.51 21 13 21c4.97 0 9-4.03 9-9s-4.03-9-9-9zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z"/></svg>Прогноз на 7 дней</div><div class="prediction-grid" id="predictionGrid"><div class="prediction-item"><div class="prediction-label">Загрузка...</div></div></div></div>
+  <div class="toolbar">
+    <button class="btn btn-primary" onclick="openModal()">+ Добавить транзакцию</button>
+    <button class="btn" onclick="openWhatIf()"> Что если</button>
+    <div class="dropdown"><button class="btn btn-menu" onclick="toggleDropdown()"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg>Меню</button><div class="dropdown-content" id="dropdown"><div class="dropdown-item" onclick="exportCSV()">📤 Экспорт CSV</div><div class="dropdown-item" onclick="document.getElementById('csvFile').click()"> Импорт CSV</div><div class="dropdown-item" onclick="saveBackup()">💾 Сохранить бэкап</div><div class="dropdown-item" onclick="document.getElementById('backupFile').click()"> Загрузить бэкап</div><div class="dropdown-item danger" onclick="clearAll()"> Очистить всё</div></div></div>
+    <input type="file" id="csvFile" accept=".csv" style="display:none" onchange="handleCSVImport(event)">
+    <input type="file" id="backupFile" accept=".json" style="display:none" onchange="handleBackupLoad(event)">
+  </div>
+  <div class="filters"><button class="filter-btn active" onclick="setFilter('all')">Все</button><button class="filter-btn" onclick="setFilter('BTC')">BTC</button><button class="filter-btn" onclick="setFilter('ETH')">ETH</button></div>
+  <div class="table-wrap"><table><thead><tr><th class="sortable" onclick="sortTable('date')">Дата</th><th class="sortable" onclick="sortTable('spent')">Потрачено</th><th>Монета</th><th class="sortable" onclick="sortTable('price')">Курс</th><th>Получено</th><th class="sortable" onclick="sortTable('commission')">Комиссия</th><th class="sortable" onclick="sortTable('currentValue')">Стоимость</th><th>Прибыль</th><th></th></tr></thead><tbody id="table"></tbody></table></div>
+  <div class="empty-state" id="emptyState" style="display:none"><div class="empty-state-icon"><svg viewBox="0 0 24 24" fill="var(--text-muted)"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg></div><h3>Нет транзакций</h3><p>Нажмите «+ Добавить транзакцию» чтобы начать</p></div>
+  <div class="loading-state" id="loadingState"> Загрузка...</div>
+</div>
+<div class="modal-overlay" id="modal" onclick="closeModalOnOverlay(event)"><div class="modal" onclick="event.stopPropagation()"><div class="modal-header"><h2 class="modal-title">Новая транзакция</h2><button class="modal-close" onclick="closeModal()">×</button></div><form onsubmit="submitModal(event)"><div class="form-row"><div class="form-group"><label>Дата</label><input type="date" id="modalDate" required></div><div class="form-group"><label>Монета</label><select id="modalCoin" onchange="updateModalPrice()"><option value="BTC">Bitcoin (BTC)</option><option value="ETH">Ethereum (ETH)</option></select></div></div><div class="form-row"><div class="form-group"><label>Потрачено (<span id="modalCurrencySymbol">₽</span>)</label><input type="number" id="modalSpent" step="0.01" min="0" required onchange="calcModalReceived()"></div><div class="form-group"><label>Курс покупки (<span id="modalCurrencySymbol2">₽</span>)</label><input type="number" id="modalPrice" step="0.01" min="0" required onchange="calcModalReceived()"></div></div><div class="form-group"><label>Получено монет</label><input type="number" id="modalReceived" step="0.00000001" min="0" required></div><button type="submit" class="btn btn-primary btn-submit">Сохранить транзакцию</button></form></div></div>
+<div class="modal-overlay" id="whatIfModal" onclick="closeWhatIfOnOverlay(event)"><div class="modal" onclick="event.stopPropagation()"><div class="modal-header"><h2 class="modal-title">🔮 Калькулятор "Что если"</h2><button class="modal-close" onclick="closeWhatIf()">×</button></div><form onsubmit="calculateWhatIf(event)"><div class="form-row"><div class="form-group"><label>Монета</label><select id="whatIfCoin"><option value="BTC">Bitcoin</option><option value="ETH">Ethereum</option></select></div><div class="form-group"><label>Сумма инвестиции</label><input type="number" id="whatIfAmount" step="0.01" min="0" required></div></div><div class="form-row"><div class="form-group"><label>Текущий курс</label><input type="number" id="whatIfCurrentPrice" step="0.01" min="0" required></div><div class="form-group"><label>Целевой курс</label><input type="number" id="whatIfTargetPrice" step="0.01" min="0" required></div></div><button type="submit" class="btn btn-primary btn-submit">Рассчитать</button></form><div id="whatIfResult" style="display:none"></div></div></div>
+<div class="undo-toast" id="undoToast"><span>Транзакция удалена</span><button class="undo-btn" onclick="undoDelete()">Отменить</button></div>
+<script>
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycby50UQk9VFAsct52U0aqrmWGshOphG7DksQWUkgMR_gDQjMpxSih6Wj-84si190tHYrNA/exec";
+const CURRENCY_SYMBOLS = { RUB: '₽', USD: '$', EUR: '€' };
+let CURRENCY_RATES = { RUB: 1, USD: 0.011, EUR: 0.010 };
+
+let deals = [];
+let filteredDeals = [];
+let currentFilter = 'all';
+let currentCurrency = 'RUB';
+let sortColumn = 'date';
+let sortDirection = 'desc';
+let pieChart, barChart, lineChart, historyChart;
+let isSyncing = false;
+let deletedDeal = null;
+let undoTimeout = null;
+let autoSaveTimeout = null;
+let currentPeriod = 30;
+let chartsAnimated = false;
+
+function fmtNum(value, decimals = 2) {
+  if (isNaN(value)) value = 0;
+  return value.toLocaleString('ru-RU', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+}
+
+function fmt(value, decimals = 2) {
+  return fmtNum(value, decimals) + ' ' + CURRENCY_SYMBOLS[currentCurrency];
+}
+
+function convert(value) {
+  return value * CURRENCY_RATES[currentCurrency];
+}
+
+// ⚡ ОПТИМИЗАЦИЯ: Кэширование курсов на 2 минуты
+async function fetchRates() {
+  const cache = localStorage.getItem('ratesCache');
+  if (cache) {
+    try {
+      const { timestamp, data } = JSON.parse(cache);
+      if (Date.now() - timestamp < 120000) {
+        const cur = currentCurrency.toLowerCase();
+        const btcVal = data.bitcoin[cur] || data.bitcoin.rub * CURRENCY_RATES[currentCurrency];
+        const ethVal = data.ethereum[cur] || data.ethereum.rub * CURRENCY_RATES[currentCurrency];
+        document.getElementById('btcRate').value = btcVal.toFixed(2);
+        document.getElementById('ethRate').value = ethVal.toFixed(2);
+        console.log('⚡ Курсы из кэша');
+        return true;
+      }
+    } catch (e) {}
+  }
+  
+  try {
+    const response = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum&vs_currencies=rub,usd,eur');
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const data = await response.json();
+    if (!data.bitcoin || !data.ethereum) throw new Error('Неполный ответ');
+    
+    const rubToUsd = data.bitcoin.usd / data.bitcoin.rub;
+    const rubToEur = data.bitcoin.eur / data.bitcoin.rub;
+    CURRENCY_RATES = { RUB: 1, USD: rubToUsd, EUR: rubToEur };
+    
+    const cur = currentCurrency.toLowerCase();
+    const btcVal = data.bitcoin[cur] || data.bitcoin.rub * CURRENCY_RATES[currentCurrency];
+    const ethVal = data.ethereum[cur] || data.ethereum.rub * CURRENCY_RATES[currentCurrency];
+    
+    document.getElementById('btcRate').value = btcVal.toFixed(2);
+    document.getElementById('ethRate').value = ethVal.toFixed(2);
+    
+    localStorage.setItem('ratesCache', JSON.stringify({ timestamp: Date.now(), data }));
+    console.log('✅ Курсы загружены:', btcVal, ethVal);
+    return true;
+  } catch (error) {
+    console.error('❌ Ошибка курсов:', error);
+    return false;
+  }
+}
+
+// ⚡ ОПТИМИЗАЦИЯ: Параллельные запросы истории
+async function fetchPriceHistory() {
+  try {
+    const days = currentPeriod === 'max' ? 3650 : currentPeriod;
+    const [btcResponse, ethResponse] = await Promise.all([
+      fetch(`https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=rub&days=${days}`),
+      fetch(`https://api.coingecko.com/api/v3/coins/ethereum/market_chart?vs_currency=rub&days=${days}`)
+    ]);
+    const btcData = await btcResponse.json();
+    const ethData = await ethResponse.json();
+    renderHistoryChart(btcData.prices, ethData.prices);
+    renderPrediction(btcData.prices, ethData.prices);
+  } catch (error) {
+    console.error('Ошибка истории:', error);
+  }
+}
+
+function setPeriod(days) {
+  currentPeriod = days;
+  document.querySelectorAll('.period-btn').forEach(btn => btn.classList.remove('active'));
+  event.target.classList.add('active');
+  fetchPriceHistory();
+}
+
+function renderHistoryChart(btcPrices, ethPrices) {
+  if (historyChart) historyChart.destroy();
+  const ctx = document.getElementById('historyChart').getContext('2d');
+  const labels = btcPrices.map(p => {
+    const date = new Date(p[0]);
+    if (currentPeriod === 1) return date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+    return date.toLocaleDateString('ru-RU', { day: '2-digit', month: 'short' });
+  });
+  const btcData = btcPrices.map(p => convert(p[1]));
+  const ethData = ethPrices.map(p => convert(p[1]));
+  
+  historyChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: labels,
+      datasets: [
+        { label: 'BTC', data: btcData, borderColor: '#c8fc3f', backgroundColor: 'rgba(200, 252, 63, 0.1)', borderWidth: 2, tension: 0.4, fill: false, pointRadius: 0, pointHoverRadius: 5 },
+        { label: 'ETH', data: ethData, borderColor: '#985bff', backgroundColor: 'rgba(152, 91, 255, 0.1)', borderWidth: 2, tension: 0.4, fill: false, pointRadius: 0, pointHoverRadius: 5 }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: { duration: chartsAnimated ? 600 : 0 },
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { position: 'bottom', labels: { color: '#6b6b7b', font: { size: 11 }, usePointStyle: true } },
+        tooltip: { backgroundColor: '#15151e', titleColor: '#fff', bodyColor: '#fff', borderColor: '#252535', borderWidth: 1, callbacks: { label: ctx => `${ctx.dataset.label}: ${fmtNum(ctx.parsed.y, 0)} ${CURRENCY_SYMBOLS[currentCurrency]}` } }
+      },
+      scales: {
+        y: { ticks: { color: '#6b6b7b', font: { size: 10 }, callback: v => v >= 1000 ? (v/1000).toFixed(0) + 'к' : v }, grid: { color: '#252535' } },
+        x: { ticks: { color: '#6b6b7b', font: { size: 9 }, maxTicksLimit: 10 }, grid: { display: false } }
+      }
+    }
+  });
+}
+
+function linearRegression(data) {
+  const n = data.length;
+  let sumX = 0, sumY = 0, sumXY = 0, sumXX = 0;
+  for (let i = 0; i < n; i++) { sumX += i; sumY += data[i]; sumXY += i * data[i]; sumXX += i * i; }
+  const slope = (n * sumXY - sumX * sumY) / (n * sumXX - sumX * sumX);
+  const intercept = (sumY - slope * sumX) / n;
+  return { slope, intercept };
+}
+
+function renderPrediction(btcPrices, ethPrices) {
+  const btcData = btcPrices.map(p => p[1]);
+  const ethData = ethPrices.map(p => p[1]);
+  const btcReg = linearRegression(btcData);
+  const ethReg = linearRegression(ethData);
+  const btcCurrent = btcData[btcData.length - 1];
+  const ethCurrent = ethData[ethData.length - 1];
+  const btcPredicted = btcReg.intercept + btcReg.slope * (btcData.length + 7);
+  const ethPredicted = ethReg.intercept + ethReg.slope * (ethData.length + 7);
+  const btcChange = ((btcPredicted - btcCurrent) / btcCurrent * 100).toFixed(2);
+  const ethChange = ((ethPredicted - ethCurrent) / ethCurrent * 100).toFixed(2);
+  
+  document.getElementById('predictionGrid').innerHTML = `
+    <div class="prediction-item"><div class="prediction-label">BTC текущий</div><div class="prediction-value">${fmtNum(convert(btcCurrent), 0)} ${CURRENCY_SYMBOLS[currentCurrency]}</div></div>
+    <div class="prediction-item"><div class="prediction-label">BTC прогноз (7 дней)</div><div class="prediction-value ${btcChange >= 0 ? 'up' : 'down'}">${fmtNum(convert(btcPredicted), 0)} ${CURRENCY_SYMBOLS[currentCurrency]} (${btcChange >= 0 ? '+' : ''}${btcChange}%)</div></div>
+    <div class="prediction-item"><div class="prediction-label">ETH текущий</div><div class="prediction-value">${fmtNum(convert(ethCurrent), 0)} ${CURRENCY_SYMBOLS[currentCurrency]}</div></div>
+    <div class="prediction-item"><div class="prediction-label">ETH прогноз (7 дней)</div><div class="prediction-value ${ethChange >= 0 ? 'up' : 'down'}">${fmtNum(convert(ethPredicted), 0)} ${CURRENCY_SYMBOLS[currentCurrency]} (${ethChange >= 0 ? '+' : ''}${ethChange}%)</div></div>
+  `;
+}
+
+function setCurrency(currency) {
+  currentCurrency = currency;
+  document.querySelectorAll('.currency-btn').forEach(btn => {
+    btn.classList.remove('active');
+    if (btn.textContent === CURRENCY_SYMBOLS[currency]) btn.classList.add('active');
+  });
+  document.getElementById('modalCurrencySymbol').textContent = CURRENCY_SYMBOLS[currency];
+  document.getElementById('modalCurrencySymbol2').textContent = CURRENCY_SYMBOLS[currency];
+  localStorage.removeItem('ratesCache');
+  fetchRates();
+  fetchPriceHistory();
+  update();
+}
+
+function setSyncStatus(status) {
+  const dot = document.getElementById('syncDot');
+  const text = document.getElementById('syncText');
+  dot.className = 'sync-dot';
+  if (status === 'syncing') { dot.classList.add('active'); text.textContent = 'Сохранение...'; isSyncing = true; }
+  else if (status === 'success') { dot.classList.add('success'); text.textContent = 'Сохранено'; isSyncing = false; setTimeout(() => setSyncStatus('idle'), 2000); }
+  else { text.textContent = 'Готово'; isSyncing = false; }
+}
+
+async function loadFromCloud() {
+  try {
+    const response = await fetch(SCRIPT_URL);
+    const data = await response.json();
+    deals = data.deals || [];
+    document.getElementById('loadingState').style.display = 'none';
+    applyFilterAndSort();
+  } catch (error) {
+    console.error('Ошибка загрузки:', error);
+    document.getElementById('loadingState').textContent = 'Ошибка загрузки';
+  }
+}
+
+async function saveToCloud() {
+  if (isSyncing) return;
+  setSyncStatus('syncing');
+  clearTimeout(autoSaveTimeout);
+  autoSaveTimeout = setTimeout(async () => {
+    try {
+      await fetch(SCRIPT_URL, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ deals: deals }) });
+      setSyncStatus('success');
+    } catch (error) { console.error('Ошибка сохранения:', error); setSyncStatus('error'); }
+  }, 1000);
+}
+
+function calc(d) {
+  const shouldReceive = d.spent / d.price;
+  const commission = (shouldReceive - d.received) * d.price;
+  const currentRate = d.coin === 'BTC' ? +document.getElementById('btcRate').value : +document.getElementById('ethRate').value;
+  const currentValue = d.received * currentRate;
+  const netProfit = currentValue - d.spent;
+  const roi = d.spent > 0 ? (netProfit / d.spent * 100) : 0;
+  return { shouldReceive, commission, currentValue, netProfit, roi };
+}
+
+function applyFilterAndSort() {
+  filteredDeals = deals.filter(d => currentFilter === 'all' || d.coin === currentFilter);
+  filteredDeals.sort((a, b) => {
+    let aVal = a[sortColumn], bVal = b[sortColumn];
+    if (sortColumn === 'date') { aVal = new Date(aVal); bVal = new Date(bVal); }
+    if (aVal < bVal) return sortDirection === 'asc' ? -1 : 1;
+    if (aVal > bVal) return sortDirection === 'asc' ? 1 : -1;
+    return 0;
+  });
+  update();
+}
+
+function sortTable(column) {
+  if (sortColumn === column) sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
+  else { sortColumn = column; sortDirection = 'desc'; }
+  document.querySelectorAll('th').forEach(th => th.classList.remove('sort-asc', 'sort-desc'));
+  event.target.classList.add(sortDirection === 'asc' ? 'sort-asc' : 'sort-desc');
+  applyFilterAndSort();
+}
+
+function setFilter(filter) {
+  currentFilter = filter;
+  document.querySelectorAll('.filter-btn').forEach(btn => {
+    btn.classList.remove('active');
+    if ((filter === 'all' && btn.textContent === 'Все') || btn.textContent === filter) btn.classList.add('active');
+  });
+  applyFilterAndSort();
+}
+
+function update() {
+  const tbody = document.getElementById('table');
+  const emptyState = document.getElementById('emptyState');
+  tbody.innerHTML = '';
+  if (filteredDeals.length === 0) { emptyState.style.display = 'block'; }
+  else { emptyState.style.display = 'none'; }
+  
+  let totalSpent = 0, totalValue = 0, totalCommission = 0, totalNetProfit = 0;
+  let btcSpent = 0, btcValue = 0, btcCommission = 0, btcNetProfit = 0, btcCoins = 0;
+  let ethSpent = 0, ethValue = 0, ethCommission = 0, ethNetProfit = 0, ethCoins = 0;
+  
+  filteredDeals.forEach((d) => {
+    const c = calc(d);
+    totalSpent += d.spent; totalValue += c.currentValue; totalCommission += c.commission; totalNetProfit += c.netProfit;
+    if (d.coin === 'BTC') { btcSpent += d.spent; btcValue += c.currentValue; btcCommission += c.commission; btcNetProfit += c.netProfit; btcCoins += d.received; }
+    else { ethSpent += d.spent; ethValue += c.currentValue; ethCommission += c.commission; ethNetProfit += c.netProfit; ethCoins += d.received; }
+    
+    const tr = document.createElement('tr');
+    tr.className = c.netProfit >= 0 ? 'profit-row fade-in' : 'loss-row fade-in';
+    const coinClass = d.coin === 'BTC' ? 'btc' : 'eth';
+    tr.innerHTML = `
+      <td>${new Date(d.date).toLocaleDateString('ru-RU')}</td>
+      <td>${fmt(convert(d.spent))}</td>
+      <td><span class="coin-badge ${coinClass}">${d.coin}</span></td>
+      <td>${fmtNum(convert(d.price))}</td>
+      <td>${d.received.toFixed(8)}</td>
+      <td>${fmt(convert(c.commission))}</td>
+      <td>${fmt(convert(c.currentValue))}</td>
+      <td>
+        <span style="color: ${c.netProfit >= 0 ? 'var(--profit)' : 'var(--loss)'}; font-weight: 700;">
+          ${c.netProfit >= 0 ? '+' : ''}${fmt(convert(c.netProfit))}
+        </span>
+        <div style="font-size: 11px; color: var(--text-muted);">${c.roi.toFixed(1)}%</div>
+      </td>
+      <td><button class="btn btn-small btn-delete" onclick="deleteRow(${deals.indexOf(d)})">×</button></td>
+    `;
+    tbody.appendChild(tr);
+  });
+  
+  const roi = totalSpent > 0 ? (totalNetProfit/totalSpent*100).toFixed(2) : 0;
+  const commissionPct = totalSpent > 0 ? (totalCommission/totalSpent*100).toFixed(2) : 0;
+  const roiAbs = Math.min(Math.abs(parseFloat(roi)) * 2, 100);
+  const commissionBarWidth = Math.min(parseFloat(commissionPct) * 5, 100);
+  
+  document.getElementById('summary').innerHTML = `
+    <div class="card"><div class="card-label"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/></svg>Всего вложено</div><div class="card-value">${fmt(convert(totalSpent))}</div><div class="card-sub"></div></div>
+    <div class="card"><div class="card-label"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>Текущая стоимость</div><div class="card-value">${fmt(convert(totalValue))}</div><div class="card-sub"></div></div>
+    <div class="card"><div class="card-label"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg>Комиссии</div><div class="card-value">${fmt(convert(totalCommission))}</div><div class="card-sub">${commissionPct}% от вложений</div><div class="card-progress"><div class="progress-bar"><div class="progress-fill loss" style="width: ${commissionBarWidth}%"></div></div></div></div>
+    <div class="card"><div class="card-label"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M16 6l2.29 2.29-4.88 4.88-4-4L2 16.59 3.41 18l6-6 4 4 6.3-6.29L22 12V6z"/></svg>Чистая прибыль</div><div class="card-value"><span class="indicator ${totalNetProfit >= 0 ? 'positive' : 'negative'}">${totalNetProfit >= 0 ? '▲' : '▼'} ${fmtNum(convert(Math.abs(totalNetProfit)))} ${CURRENCY_SYMBOLS[currentCurrency]}</span></div><div class="card-sub">${roi}% ROI</div><div class="card-progress"><div class="progress-bar"><div class="progress-fill ${totalNetProfit >= 0 ? 'profit' : 'loss'}" style="width: ${roiAbs}%"></div></div></div></div>
+    <div class="card"><div class="card-label"><svg viewBox="0 0 24 24" fill="var(--accent-lime)"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/></svg>BTC баланс</div><div class="card-value">${btcCoins.toFixed(8)}</div><div class="card-sub">Прибыль: ${btcNetProfit >= 0 ? '+' : ''}${fmt(convert(btcNetProfit))}</div></div>
+    <div class="card"><div class="card-label"><svg viewBox="0 0 24 24" fill="var(--accent-purple)"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>ETH баланс</div><div class="card-value">${ethCoins.toFixed(8)}</div><div class="card-sub">Прибыль: ${ethNetProfit >= 0 ? '+' : ''}${fmt(convert(ethNetProfit))}</div></div>
+  `;
+  
+  renderCharts(btcSpent, ethSpent, totalSpent, btcValue, ethValue, totalValue, btcNetProfit, ethNetProfit, totalNetProfit);
+}
+function renderCharts(btcSpent, ethSpent, totalSpent, btcValue, ethValue, totalValue, btcNetProfit, ethNetProfit, totalNetProfit) {
+  const animDuration = chartsAnimated ? 600 : 0;
+  const chartOptions = {
+    responsive: true, maintainAspectRatio: false,
+    animation: { duration: animDuration },
+    plugins: {
+      legend: { position: 'bottom', labels: { color: '#6b6b7b', font: { size: 11, weight: '600' }, padding: 12, usePointStyle: true, pointStyle: 'rectRounded' } },
+      tooltip: { backgroundColor: '#15151e', titleColor: '#fff', bodyColor: '#fff', borderColor: '#252535', borderWidth: 1, padding: 12, cornerRadius: 8 }
+    }
+  };
+  
+  if (pieChart) pieChart.destroy();
+  pieChart = new Chart(document.getElementById('pieChart'), {
+    type: 'doughnut',
+    data: { labels: ['Bitcoin (BTC)', 'Ethereum (ETH)'], datasets: [{ data: [convert(btcValue), convert(ethValue)], backgroundColor: ['#c8fc3f', '#985bff'], borderColor: '#15151e', borderWidth: 3, hoverOffset: 10 }] },
+    options: {
+      ...chartOptions, cutout: '70%',
+      onClick: (e, elements) => { if (elements.length > 0) { const coin = elements[0].index === 0 ? 'BTC' : 'ETH'; if (currentFilter === coin) setFilter('all'); else setFilter(coin); } },
+      plugins: { ...chartOptions.plugins, tooltip: { ...chartOptions.plugins.tooltip, callbacks: { label: ctx => { const total = ctx.dataset.data.reduce((a, b) => a + b, 0); return `${ctx.label}: ${fmtNum(ctx.parsed)} ${CURRENCY_SYMBOLS[currentCurrency]} (${((ctx.parsed / total) * 100).toFixed(1)}%)`; } } } }
+    }
+  });
+  
+  if (barChart) barChart.destroy();
+  barChart = new Chart(document.getElementById('barChart'), {
+    type: 'bar',
+    data: { labels: ['BTC', 'ETH', 'Итого'], datasets: [
+      { label: 'Вложено', data: [convert(btcSpent), convert(ethSpent), convert(totalSpent)], backgroundColor: '#c8fc3f', borderRadius: 8 },
+      { label: 'Стоимость', data: [convert(btcValue), convert(ethValue), convert(totalValue)], backgroundColor: '#985bff', borderRadius: 8 },
+      { label: 'Прибыль', data: [convert(btcNetProfit), convert(ethNetProfit), convert(totalNetProfit)], backgroundColor: totalNetProfit >= 0 ? '#00d084' : '#ff4757', borderRadius: 8 }
+    ]},
+    options: {
+      ...chartOptions,
+      scales: { y: { ticks: { color: '#6b6b7b', font: { size: 10 }, callback: v => Math.abs(v) >= 1000 ? (v/1000).toFixed(0) + 'к' : v }, grid: { color: '#252535' } }, x: { ticks: { color: '#6b6b7b', font: { size: 11, weight: '600' } }, grid: { display: false } } },
+      plugins: { ...chartOptions.plugins, tooltip: { ...chartOptions.plugins.tooltip, callbacks: { label: ctx => `${ctx.dataset.label}: ${fmtNum(ctx.parsed.y)} ${CURRENCY_SYMBOLS[currentCurrency]}` } } }
+    }
+  });
+  
+  if (lineChart) lineChart.destroy();
+  if (filteredDeals.length === 0) { const ctx = document.getElementById('lineChart').getContext('2d'); ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height); return; }
+  
+  const sortedDeals = [...filteredDeals].sort((a, b) => new Date(a.date) - new Date(b.date));
+  const btcRate = +document.getElementById('btcRate').value;
+  const ethRate = +document.getElementById('ethRate').value;
+  let cumulativeSpent = 0, cumulativeCoins = { BTC: 0, ETH: 0 };
+  const labels = [], portfolioValue = [], investedLine = [];
+  
+  sortedDeals.forEach(d => {
+    cumulativeSpent += d.spent; cumulativeCoins[d.coin] += d.received;
+    const currentValue = cumulativeCoins.BTC * btcRate + cumulativeCoins.ETH * ethRate;
+    labels.push(new Date(d.date).toLocaleDateString('ru-RU', { day: '2-digit', month: 'short' }));
+    portfolioValue.push(currentValue); investedLine.push(cumulativeSpent);
+  });
+  
+  const ctx = document.getElementById('lineChart').getContext('2d');
+  const lastValue = portfolioValue[portfolioValue.length - 1] || 0;
+  const lastInvested = investedLine[investedLine.length - 1] || 0;
+  const isProfit = lastValue >= lastInvested;
+  const gradientProfit = ctx.createLinearGradient(0, 0, 0, 300);
+  if (isProfit) { gradientProfit.addColorStop(0, 'rgba(0, 208, 132, 0.4)'); gradientProfit.addColorStop(1, 'rgba(0, 208, 132, 0.05)'); }
+  else { gradientProfit.addColorStop(0, 'rgba(255, 71, 87, 0.4)'); gradientProfit.addColorStop(1, 'rgba(255, 71, 87, 0.05)'); }
+  
+  lineChart = new Chart(ctx, {
+    type: 'line',
+    data: { labels: labels, datasets: [
+      { label: 'Стоимость портфеля', data: portfolioValue.map(v => convert(v)), borderColor: isProfit ? '#00d084' : '#ff4757', backgroundColor: gradientProfit, borderWidth: 3, tension: 0.4, fill: true, pointRadius: 5, pointBackgroundColor: isProfit ? '#00d084' : '#ff4757', pointBorderColor: '#15151e', pointBorderWidth: 2, pointHoverRadius: 7, order: 1 },
+      { label: 'Всего вложено', data: investedLine.map(v => convert(v)), borderColor: '#985bff', borderWidth: 2, borderDash: [5, 5], tension: 0, fill: false, pointRadius: 3, pointBackgroundColor: '#985bff', order: 2 }
+    ]},
+    options: {
+      ...chartOptions, interaction: { mode: 'index', intersect: false },
+      plugins: { ...chartOptions.plugins, tooltip: { ...chartOptions.plugins.tooltip, callbacks: { label: ctx => `${ctx.dataset.label}: ${fmtNum(ctx.parsed.y)} ${CURRENCY_SYMBOLS[currentCurrency]}`, afterBody: ctx => { const idx = ctx[0].dataIndex; const profit = portfolioValue[idx] - investedLine[idx]; return [`\nПрибыль: ${profit >= 0 ? '+' : ''}${fmtNum(convert(profit))} ${CURRENCY_SYMBOLS[currentCurrency]}`]; } } } },
+      scales: { y: { ticks: { color: '#6b6b7b', font: { size: 10 }, callback: v => Math.abs(v) >= 1000 ? (v/1000).toFixed(0) + 'к' : v }, grid: { color: '#252535' } }, x: { ticks: { color: '#6b6b7b', font: { size: 10 } }, grid: { display: false } } }
+    }
+  });
+  
+  if (!chartsAnimated) chartsAnimated = true;
+}
+
+function openModal() {
+  document.getElementById('modalDate').value = new Date().toISOString().split('T')[0];
+  document.getElementById('modalCoin').value = 'BTC';
+  document.getElementById('modalSpent').value = '';
+  document.getElementById('modalPrice').value = document.getElementById('btcRate').value;
+  document.getElementById('modalReceived').value = '';
+  document.getElementById('modalCurrencySymbol').textContent = CURRENCY_SYMBOLS[currentCurrency];
+  document.getElementById('modalCurrencySymbol2').textContent = CURRENCY_SYMBOLS[currentCurrency];
+  document.getElementById('modal').classList.add('active');
+}
+
+function closeModal() { document.getElementById('modal').classList.remove('active'); }
+function closeModalOnOverlay(e) { if (e.target === e.currentTarget) closeModal(); }
+
+function updateModalPrice() {
+  const coin = document.getElementById('modalCoin').value;
+  const rate = coin === 'BTC' ? document.getElementById('btcRate').value : document.getElementById('ethRate').value;
+  document.getElementById('modalPrice').value = rate;
+  calcModalReceived();
+}
+
+function calcModalReceived() {
+  const spent = +document.getElementById('modalSpent').value || 0;
+  const price = +document.getElementById('modalPrice').value || 0;
+  if (price > 0) document.getElementById('modalReceived').value = (spent / price).toFixed(8);
+}
+
+function submitModal(e) {
+  e.preventDefault();
+  const spent = +document.getElementById('modalSpent').value;
+  const price = +document.getElementById('modalPrice').value;
+  const spentRub = spent / CURRENCY_RATES[currentCurrency];
+  const priceRub = price / CURRENCY_RATES[currentCurrency];
+  deals.push({ date: document.getElementById('modalDate').value, spent: spentRub, coin: document.getElementById('modalCoin').value, price: priceRub, received: +document.getElementById('modalReceived').value, saved: true });
+  closeModal();
+  applyFilterAndSort();
+  saveToCloud();
+}
+
+function deleteRow(index) {
+  deletedDeal = deals.splice(index, 1)[0];
+  applyFilterAndSort();
+  saveToCloud();
+  const toast = document.getElementById('undoToast');
+  toast.classList.add('show');
+  undoTimeout = setTimeout(() => { toast.classList.remove('show'); deletedDeal = null; }, 5000);
+}
+
+function undoDelete() {
+  if (deletedDeal) {
+    deals.push(deletedDeal);
+    deletedDeal = null;
+    clearTimeout(undoTimeout);
+    document.getElementById('undoToast').classList.remove('show');
+    applyFilterAndSort();
+    saveToCloud();
+  }
+}
+
+function toggleDropdown() { document.getElementById('dropdown').classList.toggle('show'); }
+document.addEventListener('click', (e) => { if (!e.target.closest('.dropdown')) document.getElementById('dropdown').classList.remove('show'); });
+
+function exportCSV() {
+  if (deals.length === 0) { alert('Нет данных'); return; }
+  const headers = ['Дата', 'Потрачено (RUB)', 'Монета', 'Курс (RUB)', 'Получено'];
+  const rows = deals.map(d => [d.date, d.spent, d.coin, d.price, d.received]);
+  const csv = [headers, ...rows].map(r => r.join(';')).join('\n');
+  const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = `crypto_${new Date().toISOString().split('T')[0]}.csv`;
+  link.click();
+}
+
+function handleCSVImport(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const lines = e.target.result.split('\n').filter(l => l.trim());
+    if (lines.length < 2) { alert('Файл пустой'); return; }
+    let imported = 0;
+    for (let i = 1; i < lines.length; i++) {
+      const cols = lines[i].split(';');
+      if (cols.length >= 5) {
+        deals.push({ date: cols[0].trim(), spent: parseFloat(cols[1]) || 0, coin: cols[2].trim(), price: parseFloat(cols[3]) || 0, received: parseFloat(cols[4]) || 0, saved: true });
+        imported++;
+      }
+    }
+    if (imported > 0) { alert(`Импортировано: ${imported}`); applyFilterAndSort(); saveToCloud(); }
+  };
+  reader.readAsText(file);
+  event.target.value = '';
+}
+
+function saveBackup() {
+  const backup = { version: 4, date: new Date().toISOString(), deals };
+  const json = JSON.stringify(backup, null, 2);
+  const blob = new Blob([json], { type: 'application/json' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = `crypto_backup_${new Date().toISOString().split('T')[0]}.json`;
+  link.click();
+}
+
+function handleBackupLoad(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const backup = JSON.parse(e.target.result);
+      if (!backup.deals || !Array.isArray(backup.deals)) throw new Error('Неверный формат');
+      if (!confirm(`Загрузить бэкап от ${backup.date}?\nЭто ЗАМЕНИТ текущие данные!`)) return;
+      deals = backup.deals;
+      applyFilterAndSort();
+      saveToCloud();
+      alert(`Загружено ${deals.length} транзакций`);
+    } catch (err) { alert('Ошибка: ' + err.message); }
+  };
+  reader.readAsText(file);
+  event.target.value = '';
+}
+
+function clearAll() {
+  if (deals.length === 0) { alert('Таблица пустая'); return; }
+  if (confirm('Удалить ВСЕ транзакции?')) { deals = []; applyFilterAndSort(); saveToCloud(); }
+  document.getElementById('dropdown').classList.remove('show');
+}
+
+function openWhatIf() {
+  document.getElementById('whatIfCoin').value = 'BTC';
+  document.getElementById('whatIfAmount').value = '';
+  document.getElementById('whatIfCurrentPrice').value = document.getElementById('btcRate').value;
+  document.getElementById('whatIfTargetPrice').value = '';
+  document.getElementById('whatIfResult').style.display = 'none';
+  document.getElementById('whatIfModal').classList.add('active');
+}
+
+function closeWhatIf() { document.getElementById('whatIfModal').classList.remove('active'); }
+function closeWhatIfOnOverlay(e) { if (e.target === e.currentTarget) closeWhatIf(); }
+
+function calculateWhatIf(e) {
+  e.preventDefault();
+  const coin = document.getElementById('whatIfCoin').value;
+  const amount = +document.getElementById('whatIfAmount').value;
+  const currentPrice = +document.getElementById('whatIfCurrentPrice').value;
+  const targetPrice = +document.getElementById('whatIfTargetPrice').value;
+  const coins = amount / currentPrice;
+  const targetValue = coins * targetPrice;
+  const profit = targetValue - amount;
+  const roi = (profit / amount * 100).toFixed(2);
+  const resultDiv = document.getElementById('whatIfResult');
+  resultDiv.style.display = 'block';
+  resultDiv.innerHTML = `
+    <div class="what-if-result">
+      <div class="what-if-row"><span>Количество монет:</span><span>${coins.toFixed(8)} ${coin}</span></div>
+      <div class="what-if-row"><span>Текущая стоимость:</span><span>${fmt(amount)}</span></div>
+      <div class="what-if-row"><span>Стоимость при целевом курсе:</span><span>${fmt(targetValue)}</span></div>
+      <div class="what-if-row"><span>Прибыль/Убыток:</span><span style="color: ${profit >= 0 ? 'var(--profit)' : 'var(--loss)'}">${profit >= 0 ? '+' : ''}${fmt(profit)} (${roi}%)</span></div>
+    </div>
+  `;
+}
+
+// ⚡ ОПТИМИЗАЦИЯ: Параллельная загрузка + замер времени
+window.onload = async () => {
+  const startTime = performance.now();
+  console.log('🚀 Загрузка приложения...');
+  
+  const [ratesOk] = await Promise.all([
+    fetchRates(),
+    loadFromCloud()
+  ]);
+  
+  console.log(`✅ Основные данные загружены за ${((performance.now() - startTime) / 1000).toFixed(1)}с`);
+  
+  fetchPriceHistory();
+  
+  setInterval(fetchRates, 60000);
+  setInterval(fetchPriceHistory, 300000);
+};
+</script>
+</body>
+</html>
